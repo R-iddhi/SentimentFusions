@@ -22,13 +22,13 @@
  from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
  from sklearn.pipeline import Pipeline
  from sklearn.preprocessing import LabelEncoder
-+from sklearn.model_selection import validation_curve, learning_curve
-+from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
+from sklearn.model_selection import validation_curve
+from sklearn.metrics import precision_recall_fscore_support
  
  # Feature Engineering
  from .feature_engineering import FeatureEngineer
  from .preprocessing import TextPreprocessor
-+from .data_loader import DataLoader
+from data_loader import DataLoader
  
  import logging
  
@@ -55,8 +55,8 @@
                  'model': LogisticRegression(
 -                    random_state=42, 
 -                    max_iter=1000,
--                    solver='liblinear'
-+                    random_state=42,
+                    penalty='l2',
+                    C=1.0
 +                    max_iter=2000,
 +                    solver='liblinear',
 +                    penalty='l2',  # L2 regularization
@@ -65,7 +65,7 @@
                  'param_grid': {
 -                    'C': [0.1, 1, 10],
 -                    'penalty': ['l1', 'l2']
-+                    'C': [0.01, 0.1, 1, 10, 100],  # More regularization options
+                    'C': [0.01, 0.1, 1, 10, 100],
 +                    'penalty': ['l1', 'l2'],
 +                    'solver': ['liblinear', 'saga']
                  }
@@ -75,13 +75,13 @@
                      kernel='linear',
                      random_state=42,
 -                    probability=True
-+                    probability=True,
+                    C=1.0
 +                    C=1.0  # Regularization parameter
                  ),
                  'param_grid': {
 -                    'C': [0.1, 1, 10],
 -                    'gamma': ['scale', 'auto']
-+                    'C': [0.01, 0.1, 1, 10, 100],  # More regularization options
+                    'C': [0.01, 0.1, 1, 10, 100],
 +                    'gamma': ['scale', 'auto', 0.001, 0.01, 0.1]
                  }
              },
@@ -90,9 +90,9 @@
                      n_estimators=100,
                      random_state=42,
 -                    n_jobs=-1
-+                    n_jobs=-1,
-+                    max_depth=10,  # Prevent overfitting
-+                    min_samples_split=5,  # Prevent overfitting
+                    max_depth=10,
+                    min_samples_split=5,
+                    min_samples_leaf=2
 +                    min_samples_leaf=2   # Prevent overfitting
                  ),
                  'param_grid': {
@@ -107,10 +107,10 @@
              },
              'naive_bayes': {
                  'model': MultinomialNB(
--                    alpha=1.0
+                    alpha=1.0
 +                    alpha=1.0  # Laplace smoothing
                  ),
-                 'param_grid': {
+                    'alpha': [0.01, 0.1, 0.5, 1.0, 2.0, 10.0]
 -                    'alpha': [0.1, 1.0, 10.0]
 +                    'alpha': [0.01, 0.1, 0.5, 1.0, 2.0, 10.0]  # More smoothing options
                  }
@@ -221,7 +221,7 @@
 +            train_scores, val_scores = validation_curve(
 +                model, X_train, y_train,
 +                param_name=param_name,
-+                param_range=param_range,
+                cv=3,
 +                cv=3,  # Reduced CV for speed
 +                scoring='accuracy',
 +                n_jobs=-1
@@ -243,7 +243,7 @@
 +            
 +            # Overfitting indicators
 +            is_overfitting = max_gap > 0.1 or avg_gap > 0.05
-+            is_underfitting = np.max(val_mean) < 0.7  # Low overall performance
+            is_underfitting = np.max(val_mean) < 0.7
 +            
 +            analysis = {
 +                'param_name': param_name,
